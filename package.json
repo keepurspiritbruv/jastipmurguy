@@ -1,0 +1,32 @@
+{
+  "name": "jastip-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "db:push": "bun run src/lib/db/migrate.ts",
+    "seed": "bun run scripts/seed.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.2",
+    "drizzle-orm": "^0.44.2",
+    "next": "^15.4.0",
+    "postgres": "^3.4.7",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/bun": "^1.4.2",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.7.2"
+  }
+}
