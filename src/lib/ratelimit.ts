@@ -1,13 +1,41 @@
-const attempts = new Map<string, { count: number; resetAt: number }>();
-const WINDOW_MS = 5 * 60 * 1000;
+const WINDOW_SECONDS = 300;
 const MAX_ATTEMPTS = 10;
 
-// ponytail: in-memory limiter (per-instance on serverless); swap for Upstash/Redis if the app gets targeted
-export function allowLogin(ip: string): boolean {
+const REST_URL = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+const REST_TOKEN = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const memory = new Map<string, { count: number; resetAt: number }>();
+
+async function upstashIncr(key: string): Promise<number> {
+  const res = await fetch(`${REST_URL}/incr/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${REST_TOKEN}` },
+  });
+  if (!res.ok) throw new Error(`upstash ${res.status}`);
+  const json = (await res.json()) as { result?: number | string };
+  const count = Number(json.result ?? 0);
+  if (count === 1) {
+    await fetch(`${REST_URL}/expire/${encodeURIComponent(key)}/${WINDOW_SECONDS}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${REST_TOKEN}` },
+    });
+  }
+  return count;
+}
+
+export async function allowLogin(ip: string): Promise<boolean> {
+  if (REST_URL && REST_TOKEN) {
+    try {
+      const count = await upstashIncr(`jastip:login:${ip}`);
+      return count <= MAX_ATTEMPTS;
+    } catch {
+      // ponytail: fall back to in-memory limiter if Redis is unreachable
+    }
+  }
   const now = Date.now();
-  const cur = attempts.get(ip);
+  const cur = memory.get(ip);
   if (!cur || now > cur.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    memory.set(ip, { count: 1, resetAt: now + WINDOW_SECONDS * 1000 });
     return true;
   }
   cur.count += 1;

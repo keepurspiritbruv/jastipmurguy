@@ -31,7 +31,7 @@ function decimal(raw: string): number {
 
 export async function login(fd: FormData) {
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (!allowLogin(ip)) redirect("/masuk?error=2");
+  if (!(await allowLogin(ip))) redirect("/masuk?error=2");
   const code = str(fd, "passcode");
   if (!checkPasscode(code)) {
     await new Promise((r) => setTimeout(r, 500));
