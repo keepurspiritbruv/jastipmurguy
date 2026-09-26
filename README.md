@@ -11,7 +11,7 @@ dengan kurs yang bisa kamu koreksi manual.
   harga jual IDR. Mata uang asing tampil sebagai label sekunder.
 - **Multi-mata uang** — JPY, KRW, SGD, THB, HKD, USD, dst. Kurs live dari
   open.er-api.com, disimpan per pesanan, bisa diubah manual.
-- **Scan struk** — foto struk → AI (GLM vision) membaca barang & harga → kamu
+- **Scan struk** — foto struk → AI vision (AiZcy) membaca barang & harga → kamu
   periksa dulu sebelum disimpan.
 - **Pelanggan & tagihan** — siapa belum lunas, kirim tagihan via WhatsApp, lunasi
   semua sekali klik.
@@ -36,8 +36,9 @@ Salin `.env.example` ke `.env.local` lalu isi:
 | Variabel | Wajib | Keterangan |
 |---|---|---|
 | `DATABASE_URL` | prod | Koneksi Postgres (Vercel Postgres / Neon / Supabase). Kosongkan untuk mode lokal (PGlite). |
-| `GLM_API_KEY` | untuk scan | API key Z.AI (BigModel). Scan struk tidak jalan tanpa ini. |
-| `GLM_BASE_URL` | opsional | Default `https://api.z.ai/api/paas/v4`. |
+| `AI_API_KEY` | untuk scan | API key AiZcy (proxy GLM/DeepSeek). Scan struk tidak jalan tanpa ini. |
+| `AI_BASE_URL` | opsional | Default `https://a.izcy.tech/v1`. |
+| `AI_MODEL` | opsional | Model vision untuk OCR. Default `DeepSeek V4 Flash`. |
 | `APP_PASSCODE` | ya | Kode akses masuk aplikasi. |
 | `AUTH_SECRET` | ya | String acak panjang untuk menandatangani cookie sesi. |
 
@@ -64,5 +65,5 @@ Tidak ada ORM/alat lain.
 - `src/lib/money.ts` — logika uang murni (konversi, margin) + unit test.
 - `src/lib/queries.ts` — akses data.
 - `src/lib/actions.ts` — server actions (auth, order, scan, kurs).
-- `src/lib/ocr.ts` — panggil GLM vision untuk struk.
+- `src/lib/ocr.ts` — panggil model vision (AiZcy) untuk struk.
 - `src/lib/fx.ts` — ambil kurs live.

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { SESSION_COOKIE, SESSION_MAX_AGE, checkPasscode, issueToken } from "./auth";
@@ -9,6 +9,8 @@ import { rateToIdr } from "./fx";
 import { lineCostIdr } from "./money";
 import { extractReceipt } from "./ocr";
 import * as q from "./queries";
+import { allowLogin } from "./ratelimit";
+import { requireAuth } from "./session";
 
 const TRIP_COOKIE = "jastip_trip";
 
@@ -28,8 +30,13 @@ function decimal(raw: string): number {
 }
 
 export async function login(fd: FormData) {
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!allowLogin(ip)) redirect("/masuk?error=2");
   const code = str(fd, "passcode");
-  if (!checkPasscode(code)) redirect("/masuk?error=1");
+  if (!checkPasscode(code)) {
+    await new Promise((r) => setTimeout(r, 500));
+    redirect("/masuk?error=1");
+  }
   const store = await cookies();
   store.set(SESSION_COOKIE, issueToken(), {
     httpOnly: true,
@@ -48,6 +55,7 @@ export async function logout() {
 }
 
 export async function setCurrentTrip(fd: FormData) {
+  await requireAuth();
   const id = str(fd, "tripId");
   const store = await cookies();
   store.set(TRIP_COOKIE, id, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
@@ -55,6 +63,7 @@ export async function setCurrentTrip(fd: FormData) {
 }
 
 export async function createTripAction(fd: FormData) {
+  await requireAuth();
   const schema = z.object({
     name: z.string().min(1),
     country: z.string().min(1),
@@ -85,6 +94,7 @@ export async function createTripAction(fd: FormData) {
 }
 
 export async function updateTripAction(fd: FormData) {
+  await requireAuth();
   const id = Number(str(fd, "id"));
   const rate = decimal(str(fd, "rateUsed"));
   await q.updateTrip(id, {
@@ -98,6 +108,7 @@ export async function updateTripAction(fd: FormData) {
 }
 
 export async function saveOrderAction(fd: FormData) {
+  await requireAuth();
   const tripId = Number(str(fd, "tripId"));
   const orderId = Number(str(fd, "orderId")) || 0;
   const qty = Math.max(1, Math.round(decimal(str(fd, "qty")) || 1));
@@ -140,6 +151,7 @@ export async function saveOrderAction(fd: FormData) {
 }
 
 export async function togglePaidAction(fd: FormData) {
+  await requireAuth();
   const id = Number(str(fd, "id"));
   const paid = str(fd, "paid") === "1";
   if (id) await q.setOrderPaid(id, paid);
@@ -147,6 +159,7 @@ export async function togglePaidAction(fd: FormData) {
 }
 
 export async function deleteOrderAction(fd: FormData) {
+  await requireAuth();
   const id = Number(str(fd, "id"));
   if (id) await q.deleteOrder(id);
   revalidatePath("/", "layout");
@@ -154,6 +167,7 @@ export async function deleteOrderAction(fd: FormData) {
 }
 
 export async function markCustomerPaidAction(fd: FormData) {
+  await requireAuth();
   const ids = String(fd.get("ids") ?? "")
     .split(",")
     .map((s) => Number(s.trim()))
@@ -164,6 +178,7 @@ export async function markCustomerPaidAction(fd: FormData) {
 }
 
 export async function addCustomerAction(fd: FormData) {
+  await requireAuth();
   const name = str(fd, "name");
   if (name) await q.findOrCreateCustomer(name, str(fd, "phone") || null);
   revalidatePath("/", "layout");
@@ -171,6 +186,7 @@ export async function addCustomerAction(fd: FormData) {
 }
 
 export async function getRateAction(currency: string) {
+  await requireAuth();
   try {
     const { rate, source } = await rateToIdr(currency);
     return { ok: true as const, rate, source };
@@ -180,6 +196,7 @@ export async function getRateAction(currency: string) {
 }
 
 export async function scanReceiptAction(imageDataUrl: string, currency: string) {
+  await requireAuth();
   try {
     const draft = await extractReceipt(imageDataUrl, currency);
     return { ok: true as const, draft };
@@ -189,6 +206,7 @@ export async function scanReceiptAction(imageDataUrl: string, currency: string) 
 }
 
 export async function createOrdersFromScanAction(fd: FormData) {
+  await requireAuth();
   const tripId = Number(str(fd, "tripId"));
   const raw = str(fd, "items");
   const customerName = str(fd, "customerName");
@@ -210,6 +228,7 @@ export async function createOrdersFromScanAction(fd: FormData) {
     : null;
 
   for (const item of items) {
+    if (!item.name || !Number.isFinite(item.unitPrice)) continue;
     await q.createOrder({
       tripId,
       customerId,

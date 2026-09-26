@@ -41,7 +41,9 @@ export default async function MasukPage({
           </div>
           {error ? (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-              Kode akses salah. Coba lagi.
+              {error === "2"
+                ? "Terlalu banyak percobaan. Coba lagi beberapa menit lagi."
+                : "Kode akses salah. Coba lagi."}
             </p>
           ) : null}
           <button className="btn btn-primary w-full" type="submit">

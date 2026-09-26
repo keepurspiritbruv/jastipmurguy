@@ -32,16 +32,30 @@ function parseJson(content: string): unknown {
     .replace(/```json/gi, "")
     .replace(/```/g, "")
     .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("Jawaban AI tidak berisi JSON");
+  const start = cleaned.lastIndexOf("{");
+  if (start === -1) throw new Error("Jawaban AI tidak berisi JSON");
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < cleaned.length; i++) {
+    const c = cleaned[i];
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end === -1) throw new Error("Jawaban AI tidak berisi JSON");
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
 export async function extractReceipt(imageDataUrl: string, fallbackCurrency: string): Promise<ReceiptDraft> {
-  const key = process.env.GLM_API_KEY;
-  if (!key) throw new Error("GLM_API_KEY belum diatur");
-  const base = process.env.GLM_BASE_URL ?? "https://api.z.ai/api/paas/v4";
+  const key = process.env.AI_API_KEY;
+  if (!key) throw new Error("AI_API_KEY belum diatur");
+  const base = process.env.AI_BASE_URL ?? "https://a.izcy.tech/v1";
+  const model = process.env.AI_MODEL ?? "DeepSeek V4 Flash";
 
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
@@ -50,8 +64,7 @@ export async function extractReceipt(imageDataUrl: string, fallbackCurrency: str
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "glm-4.5v",
-      thinking: { type: "disabled" },
+      model,
       temperature: 0.1,
       messages: [
         {
