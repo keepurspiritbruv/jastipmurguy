@@ -5,6 +5,11 @@ build
 .pglite
 .env
 .env.local
+.env.*.local
 *.log
 .DS_Store
 next-env.d.ts
+.vercel
+.agents
+.claude
+skills-lock.json

@@ -11,7 +11,7 @@ export type DB = PgliteDatabase<typeof schema> | PostgresJsDatabase<typeof schem
 function create(): DB {
   const url = process.env.DATABASE_URL;
   if (url) {
-    return drizzle(postgres(url, { prepare: false }), { schema }) as DB;
+    return drizzle(postgres(url, { prepare: false, connect_timeout: 15 }), { schema }) as DB;
   }
   const client = new PGlite("./.pglite");
   return drizzlePglite(client, { schema }) as DB;

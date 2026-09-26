@@ -56,3 +56,4 @@ for (const item of items) {
 }
 
 console.log(`Seed selesai: trip "${trip.name}" dengan ${items.length} pesanan.`);
+process.exit(0);
