@@ -290,7 +290,7 @@ export async function createClientOrderAction(fd: FormData) {
     tripId: null,
     customerId,
     itemName,
-    category: "Lainnya",
+    category: str(fd, "category") || "Lainnya",
     qty: 1,
     foreignCurrency: currency,
     unitCostForeign: price,

@@ -7,6 +7,7 @@ import { formatForeign, formatIdr } from "@/lib/format";
 type Result = {
   product: string;
   currency: string;
+  category: string;
   results: { store: string; price: number; url: string | null; priceNote: string | null }[];
   recommended: { store: string; price: number; reason: string | null; priceNote: string | null } | null;
 };
@@ -200,6 +201,7 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
               <input type="hidden" name="rate" value={resp.rate} />
               <input type="hidden" name="totalIdr" value={resp.totalIdr} />
               <input type="hidden" name="currency" value={resp.result.currency} />
+              <input type="hidden" name="category" value={resp.result.category} />
               <input type="hidden" name="notes" value={`Dari ${rec.store}`} />
               <div>
                 <label className="label">Nama kamu</label>

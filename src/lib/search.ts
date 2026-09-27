@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { extractJson } from "./parse-json";
+import { CATEGORIES } from "./categories";
 
 const priceNum = z.preprocess((v) => {
   if (v == null) return 0;
@@ -14,6 +15,7 @@ const priceNum = z.preprocess((v) => {
 const SearchSchema = z.object({
   product: z.string().optional(),
   currency: z.string().optional(),
+  category: z.string().nullish(),
   results: z
     .array(
       z.object({
@@ -37,6 +39,7 @@ const SearchSchema = z.object({
 export type SearchResult = {
   product: string;
   currency: string;
+  category: string;
   results: { store: string; price: number; url: string | null; priceNote: string | null }[];
   recommended: { store: string; price: number; reason: string | null; priceNote: string | null } | null;
 };
@@ -44,7 +47,7 @@ export type SearchResult = {
 const PROMPT = (query: string) => `Cari harga produk ini di toko-toko Jepang (situs resmi dan toko online yang muncul paling atas): "${query}".
 Lakukan pencarian web. Setelah itu, balas dengan SATU objek JSON valid yang DIBUNGKUS penanda, persis seperti ini (tanpa teks lain di antara penanda):
 [[JSON]]
-{"product":"nama produk","currency":"JPY","results":[{"store":"nama toko","price":12345,"url":"https://...","priceNote":"termasuk pajak"}],"recommended":{"store":"nama toko","price":12345,"reason":"alasan singkat","priceNote":"termasuk pajak"}}
+{"product":"nama produk","currency":"JPY","category":"Kategori","results":[{"store":"nama toko","price":12345,"url":"https://...","priceNote":"termasuk pajak"}],"recommended":{"store":"nama toko","price":12345,"reason":"alasan singkat","priceNote":"termasuk pajak"}}
 [[/JSON]]
 Aturan:
 - results maksimal 3, urut dari harga termurah.
@@ -52,6 +55,7 @@ Aturan:
 - JANGAN PERNAH menulis price 0 — selalu berikan angka estimasi yang masuk akal.
 - url HARUS link langsung (https://...) ke halaman produk di SITUS RESMI toko (contoh: kickslab.jp, atmos-tokyo.com, asics.com/jp, zozo.jp, adidas.jp, nike.com/jp, dll). Hanya gunakan link alternatif/marketplace (Yahoo! Shopping, Rakuten, dsb) jika situs resminya tidak ada.
 - priceNote isi "termasuk pajak (税込)" atau "tanpa pajak (税抜)" jika diketahui dari sumber; kalau tidak jelas, isi string kosong.
+- category pilih SATU dari daftar ini: ${CATEGORIES.join(", ")}. Untuk rokok/rokok merek (Winston, Mevius, dsb) gunakan "Rokok".
 - recommended adalah harga paling masuk akal, UTAMAKAN situs resmi toko (jangan pilih marketplace kalau ada toko resmi).
 - currency selalu "JPY".
 - Gunakan hasil pencarian web, jangan mengarang.`;
@@ -95,6 +99,7 @@ export async function searchProductPrice(query: string): Promise<SearchResult> {
   return {
     product: parsed.product ?? query,
     currency: (parsed.currency ?? "JPY").toUpperCase(),
+    category: parsed.category || "Lainnya",
     results: results.map((r) => ({ store: r.store, price: r.price, url: r.url ?? null, priceNote: r.priceNote ?? null })),
     recommended,
   };

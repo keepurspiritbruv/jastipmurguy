@@ -23,6 +23,7 @@ export const CATEGORIES = [
   "Obat & Vitamin",
   "Snack",
   "Makanan",
+  "Rokok",
   "Pakaian",
   "Tas",
   "Sepatu",
