@@ -87,10 +87,27 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
           <label className="label">Lokasi (opsional)</label>
           <input
             className="input"
-            placeholder="Shibuya / Kichijoji"
+            placeholder="Kichijoji / Shibuya / Tokyo"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
           />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {["Kichijoji", "Shibuya", "Tokyo"].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setLocation(s)}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${
+                  location === s
+                    ? "bg-emerald-100 text-emerald-700 ring-emerald-300"
+                    : "bg-stone-100 text-stone-600 ring-stone-200"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+            <span className="px-1 text-xs text-stone-400">· area Tokyo</span>
+          </div>
         </div>
         <button className="btn btn-primary w-full" disabled={pending} onClick={runSearch}>
           {pending ? "Mencari harga..." : "Cari harga"}
