@@ -1,6 +1,16 @@
 import { z } from "zod";
 import { extractJson } from "./parse-json";
 
+const priceNum = z.preprocess((v) => {
+  if (v == null) return 0;
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const cleaned = v.replace(/[^\d.]/g, "");
+    return cleaned === "" ? 0 : Number(cleaned);
+  }
+  return 0;
+}, z.number().nonnegative());
+
 const SearchSchema = z.object({
   product: z.string().optional(),
   currency: z.string().optional(),
@@ -8,7 +18,7 @@ const SearchSchema = z.object({
     .array(
       z.object({
         store: z.string(),
-        price: z.number(),
+        price: priceNum,
         url: z.string().nullish(),
       }),
     )
@@ -16,7 +26,7 @@ const SearchSchema = z.object({
   recommended: z
     .object({
       store: z.string(),
-      price: z.number(),
+      price: priceNum,
       reason: z.string().nullish(),
     })
     .nullish(),
@@ -36,7 +46,8 @@ Lakukan pencarian web. Setelah itu, balas dengan SATU objek JSON valid yang DIBU
 [[/JSON]]
 Aturan:
 - results maksimal 3, urut dari harga termurah.
-- price adalah angka dalam JPY (tanpa simbol/koma/titik ribuan; jika tidak ada harga, isi 0).
+- price adalah estimasi harga pasar dalam JPY, angka saja (tanpa simbol/koma/titik ribuan). Untuk barang bekas/second-hand, gunakan harga pasar wajar.
+- JANGAN PERNAH menulis price 0 — selalu berikan angka estimasi yang masuk akal.
 - url HARUS berupa link langsung (https://...) ke halaman produk/toko tersebut, ambil dari hasil pencarian web. Jangan kosong.
 - recommended adalah harga paling masuk akal (utamakan situs resmi/toko terpercaya; jangan pilih harga termurah kalau mencurigakan).
 - currency selalu "JPY".
@@ -68,17 +79,20 @@ export async function searchProductPrice(query: string): Promise<SearchResult> {
   if (!content) throw new Error("AI tidak mengembalikan hasil");
 
   const parsed = SearchSchema.parse(extractJson(content, "results"));
-  if (parsed.results.length === 0) throw new Error("Tidak ada hasil pencarian");
+  const results = parsed.results.filter((r) => r.price > 0);
+  if (results.length === 0) {
+    throw new Error("Harga tidak bisa ditentukan. Coba tulis nama barang lebih spesifik (merk + tipe).");
+  }
 
   const rec = parsed.recommended;
+  const recommended =
+    rec && rec.price > 0
+      ? { store: rec.store, price: rec.price, reason: rec.reason ?? null }
+      : { store: results[0].store, price: results[0].price, reason: null };
   return {
     product: parsed.product ?? query,
     currency: (parsed.currency ?? "JPY").toUpperCase(),
-    results: parsed.results.map((r) => ({ store: r.store, price: r.price, url: r.url ?? null })),
-    recommended: rec
-      ? { store: rec.store, price: rec.price, reason: rec.reason ?? null }
-      : parsed.results[0]
-        ? { store: parsed.results[0].store, price: parsed.results[0].price, reason: null }
-        : null,
+    results: results.map((r) => ({ store: r.store, price: r.price, url: r.url ?? null })),
+    recommended,
   };
 }
