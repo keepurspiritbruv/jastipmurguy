@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { createClientOrderAction, searchPriceAction } from "@/lib/actions";
 import { formatForeign, formatIdr } from "@/lib/format";
 
@@ -40,6 +40,8 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
   const [pending, start] = useTransition();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const [subscribing, setSubscribing] = useState(false);
 
   function runSearch() {
     const q = `${product} ${location}`.trim();
@@ -51,6 +53,20 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
   }
 
   const rec = resp?.ok ? resp.result.recommended : null;
+
+  async function handleOrder() {
+    setSubscribing(true);
+    const sub = await enableNotifications();
+    setSubscribing(false);
+    if (sub) {
+      const inp = document.createElement("input");
+      inp.type = "hidden";
+      inp.name = "pushSub";
+      inp.value = sub;
+      formRef.current?.appendChild(inp);
+    }
+    formRef.current?.requestSubmit();
+  }
 
   return (
     <div className="space-y-4">
@@ -194,7 +210,7 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
           </div>
 
           {rec ? (
-            <form action={createClientOrderAction} className="card space-y-3">
+            <form action={createClientOrderAction} ref={formRef} className="card space-y-3">
               <h2 className="text-sm font-bold">Setuju & buat pesanan</h2>
               <input type="hidden" name="itemName" value={resp.result.product} />
               <input type="hidden" name="price" value={rec.price} />
@@ -225,8 +241,13 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
-              <button className="btn btn-primary w-full" disabled={pending}>
-                Buat pesanan
+              <button
+                type="button"
+                className="btn btn-primary w-full"
+                disabled={pending || subscribing}
+                onClick={handleOrder}
+              >
+                {subscribing ? "Mengaktifkan notifikasi..." : "Buat pesanan"}
               </button>
             </form>
           ) : null}
@@ -261,4 +282,31 @@ function Row({ label, value }: { label: string; value: string }) {
       <span>{value}</span>
     </div>
   );
+}
+
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const arr = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function enableNotifications(): Promise<string> {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return "";
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return "";
+    const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!key) return "";
+    const subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key),
+    });
+    return JSON.stringify(subscription);
+  } catch {
+    return "";
+  }
 }

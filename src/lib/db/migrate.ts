@@ -46,11 +46,17 @@ const DDL = [
     notes text,
     source text NOT NULL DEFAULT 'manual',
     status text NOT NULL DEFAULT 'accepted',
+    bought boolean NOT NULL DEFAULT false,
+    payment_proof text,
+    push_subscription text,
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
   `ALTER TABLE orders ALTER COLUMN trip_id DROP NOT NULL`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'manual'`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'accepted'`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS bought boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_proof text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS push_subscription text`,
   `CREATE INDEX IF NOT EXISTS orders_trip_idx ON orders(trip_id)`,
   `CREATE INDEX IF NOT EXISTS orders_customer_idx ON orders(customer_id)`,
 ];

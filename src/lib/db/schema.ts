@@ -61,6 +61,9 @@ export const orders = pgTable("orders", {
   notes: text("notes"),
   source: text("source").notNull().default("manual"),
   status: text("status").notNull().default("accepted"),
+  bought: boolean("bought").notNull().default(false),
+  paymentProof: text("payment_proof"),
+  pushSubscription: text("push_subscription"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

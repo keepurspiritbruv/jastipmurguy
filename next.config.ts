@@ -14,7 +14,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@electric-sql/pglite", "postgres"],
+  serverExternalPackages: ["@electric-sql/pglite", "postgres", "web-push"],
   experimental: {
     serverActions: { bodySizeLimit: "4mb" },
   },

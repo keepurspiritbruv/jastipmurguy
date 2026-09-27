@@ -11,6 +11,7 @@ import { extractReceipt } from "./ocr";
 import * as q from "./queries";
 import { allowLogin, rateLimit } from "./ratelimit";
 import { searchProductPrice } from "./search";
+import { sendPush } from "./push";
 import { requireAuth } from "./session";
 
 const TRIP_COOKIE = "jastip_trip";
@@ -300,6 +301,7 @@ export async function createClientOrderAction(fd: FormData) {
     notes: str(fd, "notes") || null,
     source: "client",
     status: "pending",
+    pushSubscription: str(fd, "pushSub") || null,
   });
   revalidatePath("/", "layout");
   redirect("/cari?ok=1");
@@ -308,7 +310,17 @@ export async function createClientOrderAction(fd: FormData) {
 export async function acceptOrderAction(fd: FormData) {
   await requireAuth();
   const id = Number(str(fd, "id"));
-  if (id) await q.setOrderStatus(id, "accepted");
+  if (id) {
+    await q.setOrderStatus(id, "accepted");
+    const order = await q.getOrder(id);
+    if (order?.pushSubscription) {
+      await sendPush(order.pushSubscription, {
+        title: "JastipMurGuy",
+        body: "Pesanan anda sudah diterima murguy",
+        url: "/cari",
+      });
+    }
+  }
   revalidatePath("/", "layout");
   redirect("/pesanan-masuk");
 }
@@ -319,4 +331,31 @@ export async function rejectOrderAction(fd: FormData) {
   if (id) await q.setOrderStatus(id, "rejected");
   revalidatePath("/", "layout");
   redirect("/pesanan-masuk");
+}
+
+export async function buyOrderAction(fd: FormData) {
+  await requireAuth();
+  const id = Number(str(fd, "id"));
+  if (id) {
+    await q.setOrderBought(id);
+    const order = await q.getOrder(id);
+    if (order?.pushSubscription) {
+      await sendPush(order.pushSubscription, {
+        title: "JastipMurGuy",
+        body: "Pesanan anda sudah dibeli",
+        url: `/bayar/${id}`,
+      });
+    }
+  }
+  revalidatePath("/", "layout");
+  redirect("/pesanan");
+}
+
+export async function submitPaymentProofAction(orderId: number, imageDataUrl: string) {
+  if (!orderId || !imageDataUrl.startsWith("data:image")) {
+    return { ok: false as const, error: "Gambar tidak valid" };
+  }
+  await q.setOrderPaymentProof(orderId, imageDataUrl);
+  revalidatePath("/", "layout");
+  return { ok: true as const };
 }

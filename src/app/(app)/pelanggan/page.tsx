@@ -22,6 +22,7 @@ export default async function PelangganPage() {
     .sort((a, b) => b.outstanding - a.outstanding || b.revenue - a.revenue);
 
   const totalOutstanding = rows.reduce((t, r) => t + r.outstanding, 0);
+  const proofOrders = orders.filter((o) => o.paymentProof);
 
   return (
     <div className="animate-in space-y-4">
@@ -31,6 +32,32 @@ export default async function PelangganPage() {
         <span className="text-sm text-stone-500">Total belum lunas</span>
         <span className="text-lg font-bold text-amber-600">{formatIdr(totalOutstanding)}</span>
       </div>
+
+      {proofOrders.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="px-1 text-sm font-semibold text-stone-500">
+            🧾 Bukti pembayaran ({proofOrders.length})
+          </h2>
+          {proofOrders.map((o) => (
+            <div key={o.id} className="card space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">
+                  {o.customerName ?? "Tanpa nama"} — {o.itemName}
+                </p>
+                <p className="text-sm font-semibold">{formatIdr(o.sellPriceIdr)}</p>
+              </div>
+              <a href={o.paymentProof!} target="_blank" rel="noreferrer">
+                <img
+                  src={o.paymentProof!}
+                  alt="Bukti pembayaran"
+                  className="max-h-64 w-full rounded-xl object-contain ring-1 ring-stone-200"
+                />
+              </a>
+              <p className="text-xs text-stone-400">Ketuk gambar untuk perbesar.</p>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       <details className="card">
         <summary className="cursor-pointer text-sm font-semibold">+ Tambah pelanggan</summary>

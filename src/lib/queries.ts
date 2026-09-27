@@ -25,6 +25,9 @@ export type OrderView = {
   notes: string | null;
   source: string;
   status: string;
+  bought: boolean;
+  paymentProof: string | null;
+  pushSubscription: string | null;
   createdAt: Date;
 };
 
@@ -52,6 +55,9 @@ function toView({ order, customerName }: OrderRow): OrderView {
     notes: order.notes,
     source: order.source,
     status: order.status,
+    bought: order.bought,
+    paymentProof: order.paymentProof,
+    pushSubscription: order.pushSubscription,
     createdAt: order.createdAt,
   };
 }
@@ -217,6 +223,7 @@ export async function createOrder(input: {
   receiptId?: number | null;
   source?: string;
   status?: string;
+  pushSubscription?: string | null;
 }) {
   const rows = await d
     .insert(orders)
@@ -237,6 +244,7 @@ export async function createOrder(input: {
       receiptId: input.receiptId ?? null,
       source: input.source ?? "manual",
       status: input.status ?? "accepted",
+      pushSubscription: input.pushSubscription ?? null,
     })
     .returning();
   return rows[0];
@@ -281,6 +289,18 @@ export async function setOrderPaid(id: number, paid: boolean) {
 
 export async function setOrderStatus(id: number, status: string) {
   await d.update(orders).set({ status }).where(eq(orders.id, id));
+}
+
+export async function setOrderBought(id: number) {
+  await d.update(orders).set({ bought: true }).where(eq(orders.id, id));
+}
+
+export async function setOrderPaymentProof(id: number, proof: string) {
+  await d.update(orders).set({ paymentProof: proof }).where(eq(orders.id, id));
+}
+
+export async function setOrderPushSubscription(id: number, sub: string) {
+  await d.update(orders).set({ pushSubscription: sub }).where(eq(orders.id, id));
 }
 
 export async function deleteOrder(id: number) {
