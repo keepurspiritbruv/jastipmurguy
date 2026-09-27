@@ -7,8 +7,8 @@ import { formatForeign, formatIdr } from "@/lib/format";
 type Result = {
   product: string;
   currency: string;
-  results: { store: string; price: number; url: string | null }[];
-  recommended: { store: string; price: number; reason: string | null } | null;
+  results: { store: string; price: number; url: string | null; priceNote: string | null }[];
+  recommended: { store: string; price: number; reason: string | null; priceNote: string | null } | null;
 };
 
 type SearchResponse =
@@ -55,7 +55,7 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
     <div className="space-y-4">
       {ok ? (
         <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          Pesanan kamu sudah masuk. Kami akan menghubungi via WhatsApp.
+          Pesanan kamu sudah masuk. Kami akan menghubungi anda.
         </p>
       ) : null}
       {error === "1" ? (
@@ -148,9 +148,14 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
                       {r.store}{" "}
                       {isRec ? <span className="text-xs text-emerald-600">· rekomendasi</span> : null}
                     </span>
-                    <span className="font-semibold">
-                      {formatForeign(r.price, resp.result.currency)}
-                    </span>
+                    <div className="text-right">
+                      <span className="font-semibold">
+                        {formatForeign(r.price, resp.result.currency)}
+                      </span>
+                      {r.priceNote ? (
+                        <div className="text-[11px] font-medium text-red-600">{r.priceNote}</div>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="mt-0.5 flex items-center gap-1 text-[11px] text-blue-600">
                     🔗 {domain || "Lihat toko"}
@@ -166,6 +171,7 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
               <p className="text-xs text-stone-500">
                 Harga paling masuk akal: {rec.store} —{" "}
                 {formatForeign(rec.price, resp.result.currency)}
+                {rec.priceNote ? <span className="text-red-600"> · {rec.priceNote}</span> : null}
                 {rec.reason ? <span className="block">({rec.reason})</span> : null}
               </p>
             ) : null}

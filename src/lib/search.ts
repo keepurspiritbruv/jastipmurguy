@@ -20,6 +20,7 @@ const SearchSchema = z.object({
         store: z.string(),
         price: priceNum,
         url: z.string().nullish(),
+        priceNote: z.string().nullish(),
       }),
     )
     .default([]),
@@ -28,6 +29,7 @@ const SearchSchema = z.object({
       store: z.string(),
       price: priceNum,
       reason: z.string().nullish(),
+      priceNote: z.string().nullish(),
     })
     .nullish(),
 });
@@ -35,21 +37,22 @@ const SearchSchema = z.object({
 export type SearchResult = {
   product: string;
   currency: string;
-  results: { store: string; price: number; url: string | null }[];
-  recommended: { store: string; price: number; reason: string | null } | null;
+  results: { store: string; price: number; url: string | null; priceNote: string | null }[];
+  recommended: { store: string; price: number; reason: string | null; priceNote: string | null } | null;
 };
 
 const PROMPT = (query: string) => `Cari harga produk ini di toko-toko Jepang (situs resmi dan toko online yang muncul paling atas): "${query}".
 Lakukan pencarian web. Setelah itu, balas dengan SATU objek JSON valid yang DIBUNGKUS penanda, persis seperti ini (tanpa teks lain di antara penanda):
 [[JSON]]
-{"product":"nama produk","currency":"JPY","results":[{"store":"nama toko","price":12345,"url":"https://..."}],"recommended":{"store":"nama toko","price":12345,"reason":"alasan singkat"}}
+{"product":"nama produk","currency":"JPY","results":[{"store":"nama toko","price":12345,"url":"https://...","priceNote":"termasuk pajak"}],"recommended":{"store":"nama toko","price":12345,"reason":"alasan singkat","priceNote":"termasuk pajak"}}
 [[/JSON]]
 Aturan:
 - results maksimal 3, urut dari harga termurah.
 - price adalah estimasi harga pasar dalam JPY, angka saja (tanpa simbol/koma/titik ribuan). Untuk barang bekas/second-hand, gunakan harga pasar wajar.
 - JANGAN PERNAH menulis price 0 — selalu berikan angka estimasi yang masuk akal.
-- url HARUS berupa link langsung (https://...) ke halaman produk/toko tersebut, ambil dari hasil pencarian web. Jangan kosong.
-- recommended adalah harga paling masuk akal (utamakan situs resmi/toko terpercaya; jangan pilih harga termurah kalau mencurigakan).
+- url HARUS link langsung (https://...) ke halaman produk di SITUS RESMI toko (contoh: kickslab.jp, atmos-tokyo.com, asics.com/jp, zozo.jp, adidas.jp, nike.com/jp, dll). Hanya gunakan link alternatif/marketplace (Yahoo! Shopping, Rakuten, dsb) jika situs resminya tidak ada.
+- priceNote isi "termasuk pajak (税込)" atau "tanpa pajak (税抜)" jika diketahui dari sumber; kalau tidak jelas, isi string kosong.
+- recommended adalah harga paling masuk akal, UTAMAKAN situs resmi toko (jangan pilih marketplace kalau ada toko resmi).
 - currency selalu "JPY".
 - Gunakan hasil pencarian web, jangan mengarang.`;
 
@@ -87,12 +90,12 @@ export async function searchProductPrice(query: string): Promise<SearchResult> {
   const rec = parsed.recommended;
   const recommended =
     rec && rec.price > 0
-      ? { store: rec.store, price: rec.price, reason: rec.reason ?? null }
-      : { store: results[0].store, price: results[0].price, reason: null };
+      ? { store: rec.store, price: rec.price, reason: rec.reason ?? null, priceNote: rec.priceNote ?? null }
+      : { store: results[0].store, price: results[0].price, reason: null, priceNote: results[0].priceNote ?? null };
   return {
     product: parsed.product ?? query,
     currency: (parsed.currency ?? "JPY").toUpperCase(),
-    results: results.map((r) => ({ store: r.store, price: r.price, url: r.url ?? null })),
+    results: results.map((r) => ({ store: r.store, price: r.price, url: r.url ?? null, priceNote: r.priceNote ?? null })),
     recommended,
   };
 }
