@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { getRateAction, saveOrderAction } from "@/lib/actions";
 import { CATEGORIES, CURRENCIES } from "@/lib/categories";
 import { formatForeign, formatIdr } from "@/lib/format";
@@ -35,6 +35,8 @@ export default function OrderForm({
   const [qty, setQty] = useState(order ? String(order.qty) : "1");
   const [rate, setRate] = useState(order ? String(order.rateUsed) : trip.rateUsed);
   const [sell, setSell] = useState(order ? String(order.sellPriceIdr) : "");
+  const [markup, setMarkup] = useState("10");
+  const [sellTouched, setSellTouched] = useState(!!order);
   const [note, setNote] = useState<string | null>(null);
   const [loading, start] = useTransition();
 
@@ -43,8 +45,14 @@ export default function OrderForm({
     Number(qty) || 0,
     Number(rate) || 0,
   );
+  const markupNum = Number(markup) || 0;
+  const suggestedSell = Math.round(costPreview * (1 + markupNum / 100));
   const sellNum = Number(sell.replace(/[^\d]/g, "")) || 0;
   const marginNum = sellNum - costPreview;
+
+  useEffect(() => {
+    if (!sellTouched && suggestedSell > 0) setSell(String(suggestedSell));
+  }, [suggestedSell, sellTouched]);
 
   function fetchRate(cur: string) {
     setNote(null);
@@ -186,6 +194,26 @@ export default function OrderForm({
       </div>
 
       <div className="card space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Markup (%)</label>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={markup}
+              onChange={(e) => {
+                setMarkup(e.target.value);
+                setSellTouched(false);
+              }}
+            />
+          </div>
+          <div>
+            <label className="label">Harga jual disarankan</label>
+            <div className="rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold">
+              {formatIdr(suggestedSell)}
+            </div>
+          </div>
+        </div>
         <div>
           <label className="label">Harga jual ke pelanggan (IDR)</label>
           <input
@@ -194,7 +222,10 @@ export default function OrderForm({
             inputMode="numeric"
             placeholder="450000"
             value={sell}
-            onChange={(e) => setSell(e.target.value)}
+            onChange={(e) => {
+              setSell(e.target.value);
+              setSellTouched(true);
+            }}
             required
           />
         </div>
