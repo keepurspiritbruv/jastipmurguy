@@ -2,7 +2,7 @@ import Link from "next/link";
 import { togglePaidAction } from "@/lib/actions";
 import { formatForeign, formatIdr } from "@/lib/format";
 import { tripStats } from "@/lib/money";
-import { listClientOrders, listOrders } from "@/lib/queries";
+import { listClientOrders, listOrders, listPendingOrders } from "@/lib/queries";
 import { getCurrentTrip } from "@/lib/session";
 
 export default async function PesananPage({
@@ -14,6 +14,7 @@ export default async function PesananPage({
   const unpaidOnly = belum === "1";
   const trip = await getCurrentTrip();
   const clientOrders = await listClientOrders();
+  const pendingCount = (await listPendingOrders()).length;
 
   if (!trip && clientOrders.length === 0) {
     return (
@@ -37,10 +38,22 @@ export default async function PesananPage({
         </p>
       ) : null}
 
+      {pendingCount > 0 ? (
+        <Link
+          href="/pesanan-masuk"
+          className="card flex items-center justify-between ring-1 ring-amber-200"
+        >
+          <span className="text-sm font-semibold">
+            📥 {pendingCount} pesanan menunggu review
+          </span>
+          <span className="text-xs font-medium text-amber-600">Review →</span>
+        </Link>
+      ) : null}
+
       {clientOrders.length > 0 ? (
         <section className="space-y-2">
           <h2 className="px-1 text-sm font-semibold text-stone-500">
-            📥 Pesanan masuk dari klien ({clientOrders.length})
+            Pesanan klien diterima ({clientOrders.length})
           </h2>
           <div className="space-y-2">
             {clientOrders.map((order) => (

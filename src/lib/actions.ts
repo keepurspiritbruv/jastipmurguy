@@ -257,7 +257,8 @@ export async function searchPriceAction(query: string) {
   if (q.length < 3) return { ok: false as const, error: "Ketik nama barang dulu." };
   try {
     const result = await searchProductPrice(q);
-    const rate = Number(process.env.JASTIP_RATE ?? 115);
+    const fx = await rateToIdr("JPY");
+    const rate = fx.rate;
     const markup = Number(process.env.JASTIP_MARKUP ?? 10);
     const price = result.recommended?.price ?? result.results[0]?.price ?? 0;
     const modalIdr = lineCostIdr(price, 1, rate);
@@ -298,7 +299,24 @@ export async function createClientOrderAction(fd: FormData) {
     sellPriceIdr: totalIdr,
     notes: str(fd, "notes") || null,
     source: "client",
+    status: "pending",
   });
   revalidatePath("/", "layout");
   redirect("/cari?ok=1");
+}
+
+export async function acceptOrderAction(fd: FormData) {
+  await requireAuth();
+  const id = Number(str(fd, "id"));
+  if (id) await q.setOrderStatus(id, "accepted");
+  revalidatePath("/", "layout");
+  redirect("/pesanan-masuk");
+}
+
+export async function rejectOrderAction(fd: FormData) {
+  await requireAuth();
+  const id = Number(str(fd, "id"));
+  if (id) await q.setOrderStatus(id, "rejected");
+  revalidatePath("/", "layout");
+  redirect("/pesanan-masuk");
 }

@@ -60,6 +60,7 @@ export const orders = pgTable("orders", {
   }),
   notes: text("notes"),
   source: text("source").notNull().default("manual"),
+  status: text("status").notNull().default("accepted"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

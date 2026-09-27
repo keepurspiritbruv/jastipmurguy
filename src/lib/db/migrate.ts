@@ -45,10 +45,12 @@ const DDL = [
     receipt_id integer REFERENCES receipts(id) ON DELETE SET NULL,
     notes text,
     source text NOT NULL DEFAULT 'manual',
+    status text NOT NULL DEFAULT 'accepted',
     created_at timestamptz NOT NULL DEFAULT now()
   )`,
   `ALTER TABLE orders ALTER COLUMN trip_id DROP NOT NULL`,
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'manual'`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'accepted'`,
   `CREATE INDEX IF NOT EXISTS orders_trip_idx ON orders(trip_id)`,
   `CREATE INDEX IF NOT EXISTS orders_customer_idx ON orders(customer_id)`,
 ];

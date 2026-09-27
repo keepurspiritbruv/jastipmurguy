@@ -37,7 +37,7 @@ Lakukan pencarian web. Setelah itu, balas dengan SATU objek JSON valid yang DIBU
 Aturan:
 - results maksimal 3, urut dari harga termurah.
 - price adalah angka dalam JPY (tanpa simbol/koma/titik ribuan; jika tidak ada harga, isi 0).
-- url adalah link ke halaman produk/toko (boleh string kosong).
+- url HARUS berupa link langsung (https://...) ke halaman produk/toko tersebut, ambil dari hasil pencarian web. Jangan kosong.
 - recommended adalah harga paling masuk akal (utamakan situs resmi/toko terpercaya; jangan pilih harga termurah kalau mencurigakan).
 - currency selalu "JPY".
 - Gunakan hasil pencarian web, jangan mengarang.`;

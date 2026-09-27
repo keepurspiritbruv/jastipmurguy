@@ -24,6 +24,7 @@ export type OrderView = {
   paidAt: Date | null;
   notes: string | null;
   source: string;
+  status: string;
   createdAt: Date;
 };
 
@@ -50,6 +51,7 @@ function toView({ order, customerName }: OrderRow): OrderView {
     paidAt: order.paidAt,
     notes: order.notes,
     source: order.source,
+    status: order.status,
     createdAt: order.createdAt,
   };
 }
@@ -159,7 +161,17 @@ export async function listClientOrders() {
     .select({ order: orders, customerName: customers.name })
     .from(orders)
     .leftJoin(customers, eq(orders.customerId, customers.id))
-    .where(isNull(orders.tripId))
+    .where(and(isNull(orders.tripId), eq(orders.status, "accepted")))
+    .orderBy(desc(orders.createdAt));
+  return rows.map(toView);
+}
+
+export async function listPendingOrders() {
+  const rows = await d
+    .select({ order: orders, customerName: customers.name })
+    .from(orders)
+    .leftJoin(customers, eq(orders.customerId, customers.id))
+    .where(eq(orders.status, "pending"))
     .orderBy(desc(orders.createdAt));
   return rows.map(toView);
 }
@@ -204,6 +216,7 @@ export async function createOrder(input: {
   paid?: boolean;
   receiptId?: number | null;
   source?: string;
+  status?: string;
 }) {
   const rows = await d
     .insert(orders)
@@ -223,6 +236,7 @@ export async function createOrder(input: {
       paidAt: input.paid ? new Date() : null,
       receiptId: input.receiptId ?? null,
       source: input.source ?? "manual",
+      status: input.status ?? "accepted",
     })
     .returning();
   return rows[0];
@@ -263,6 +277,10 @@ export async function setOrderPaid(id: number, paid: boolean) {
     .update(orders)
     .set({ paid, paidAt: paid ? new Date() : null })
     .where(eq(orders.id, id));
+}
+
+export async function setOrderStatus(id: number, status: string) {
+  await d.update(orders).set({ status }).where(eq(orders.id, id));
 }
 
 export async function deleteOrder(id: number) {

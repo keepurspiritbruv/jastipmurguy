@@ -23,6 +23,15 @@ type SearchResponse =
     }
   | { ok: false; error: string };
 
+function domainOf(url: string | null | undefined): string {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 export default function SearchClient({ ok, error }: { ok: boolean; error?: string }) {
   const [product, setProduct] = useState("");
   const [location, setLocation] = useState("");
@@ -34,6 +43,7 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
   function runSearch() {
     const q = `${product} ${location}`.trim();
     if (q.length < 3) return;
+    setResp(null);
     start(async () => {
       setResp(await searchPriceAction(q));
     });
@@ -87,25 +97,29 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
         </button>
       </div>
 
-      {resp && !resp.ok ? (
+      {pending ? <SearchSkeleton /> : null}
+
+      {!pending && resp && !resp.ok ? (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{resp.error}</p>
       ) : null}
 
-      {resp?.ok ? (
+      {!pending && resp?.ok ? (
         <>
           <div className="card space-y-2">
-            <h2 className="text-sm font-bold">
-              Perbandingan harga — {resp.result.product}
-            </h2>
+            <h2 className="text-sm font-bold">Perbandingan harga — {resp.result.product}</h2>
+            <p className="text-xs text-stone-500">Klik untuk buka halaman produknya.</p>
             {resp.result.results.map((r, i) => {
-              const isRec =
-                rec &&
-                rec.store === r.store &&
-                rec.price === r.price;
+              const isRec = rec && rec.store === r.store && rec.price === r.price;
+              const href =
+                r.url ||
+                `https://www.google.com/search?q=${encodeURIComponent(
+                  `${r.store} ${resp.result.product} harga`,
+                )}`;
+              const domain = domainOf(r.url);
               return (
                 <a
                   key={i}
-                  href={r.url ?? undefined}
+                  href={href}
                   target="_blank"
                   rel="noreferrer"
                   className={`block rounded-xl px-3 py-2 ring-1 ${
@@ -114,9 +128,15 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
-                      {r.store} {isRec ? <span className="text-xs text-emerald-600">· rekomendasi</span> : null}
+                      {r.store}{" "}
+                      {isRec ? <span className="text-xs text-emerald-600">· rekomendasi</span> : null}
                     </span>
-                    <span className="font-semibold">{formatForeign(r.price, resp.result.currency)}</span>
+                    <span className="font-semibold">
+                      {formatForeign(r.price, resp.result.currency)}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1 text-[11px] text-blue-600">
+                    🔗 {domain || "Lihat toko"}
                   </div>
                 </a>
               );
@@ -132,6 +152,7 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
                 {rec.reason ? <span className="block">({rec.reason})</span> : null}
               </p>
             ) : null}
+            <p className="text-xs text-stone-500">Kurs live JPY → IDR: Rp {resp.rate}</p>
             <div className="space-y-1 rounded-xl bg-stone-100 px-3 py-2 text-sm">
               <Row
                 label={`Harga barang (${rec ? formatForeign(rec.price, resp.result.currency) : ""})`}
@@ -186,6 +207,24 @@ export default function SearchClient({ ok, error }: { ok: boolean; error?: strin
           ) : null}
         </>
       ) : null}
+    </div>
+  );
+}
+
+function SearchSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <p className="px-1 text-sm text-stone-500">Mencari harga & link di toko Jepang...</p>
+      <div className="card space-y-2">
+        <div className="h-4 w-44 rounded bg-stone-200" />
+        <div className="h-14 rounded-xl bg-stone-200" />
+        <div className="h-14 rounded-xl bg-stone-200" />
+        <div className="h-14 rounded-xl bg-stone-200" />
+      </div>
+      <div className="card space-y-2">
+        <div className="h-4 w-32 rounded bg-stone-200" />
+        <div className="h-24 rounded-xl bg-stone-200" />
+      </div>
     </div>
   );
 }
