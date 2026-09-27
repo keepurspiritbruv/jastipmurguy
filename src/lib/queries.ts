@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { db } from "./db";
 import { customers, orders, receipts, trips } from "./db/schema";
@@ -9,7 +9,7 @@ const d = db as unknown as PostgresJsDatabase<typeof schema>;
 
 export type OrderView = {
   id: number;
-  tripId: number;
+  tripId: number | null;
   customerId: number | null;
   customerName: string | null;
   itemName: string;
@@ -23,6 +23,7 @@ export type OrderView = {
   paid: boolean;
   paidAt: Date | null;
   notes: string | null;
+  source: string;
   createdAt: Date;
 };
 
@@ -48,6 +49,7 @@ function toView({ order, customerName }: OrderRow): OrderView {
     paid: order.paid,
     paidAt: order.paidAt,
     notes: order.notes,
+    source: order.source,
     createdAt: order.createdAt,
   };
 }
@@ -152,6 +154,16 @@ export async function getOrder(id: number) {
   return rows[0] ?? null;
 }
 
+export async function listClientOrders() {
+  const rows = await d
+    .select({ order: orders, customerName: customers.name })
+    .from(orders)
+    .leftJoin(customers, eq(orders.customerId, customers.id))
+    .where(isNull(orders.tripId))
+    .orderBy(desc(orders.createdAt));
+  return rows.map(toView);
+}
+
 export async function listCustomers() {
   return d.select().from(customers).orderBy(customers.name);
 }
@@ -178,7 +190,7 @@ export async function findOrCreateCustomer(name: string, phone?: string | null) 
 }
 
 export async function createOrder(input: {
-  tripId: number;
+  tripId: number | null;
   customerId: number | null;
   itemName: string;
   category: string;
@@ -191,6 +203,7 @@ export async function createOrder(input: {
   notes?: string | null;
   paid?: boolean;
   receiptId?: number | null;
+  source?: string;
 }) {
   const rows = await d
     .insert(orders)
@@ -209,6 +222,7 @@ export async function createOrder(input: {
       paid: input.paid ?? false,
       paidAt: input.paid ? new Date() : null,
       receiptId: input.receiptId ?? null,
+      source: input.source ?? "manual",
     })
     .returning();
   return rows[0];

@@ -9,7 +9,8 @@ import { rateToIdr } from "./fx";
 import { lineCostIdr } from "./money";
 import { extractReceipt } from "./ocr";
 import * as q from "./queries";
-import { allowLogin } from "./ratelimit";
+import { allowLogin, rateLimit } from "./ratelimit";
+import { searchProductPrice } from "./search";
 import { requireAuth } from "./session";
 
 const TRIP_COOKIE = "jastip_trip";
@@ -119,7 +120,7 @@ export async function saveOrderAction(fd: FormData) {
   const itemName = str(fd, "itemName");
 
   const back = orderId ? `/pesanan/${orderId}` : `/pesanan/baru?trip=${tripId}`;
-  if (!tripId || !itemName || !foreignCurrency) redirect(`${back}?error=1`);
+  if (!itemName || !foreignCurrency || (!orderId && !tripId)) redirect(`${back}?error=1`);
   if (!Number.isFinite(unitCostForeign) || !Number.isFinite(rateUsed) || rateUsed <= 0) {
     redirect(`${back}?error=1`);
   }
@@ -245,4 +246,59 @@ export async function createOrdersFromScanAction(fd: FormData) {
   }
   revalidatePath("/", "layout");
   redirect("/pesanan?scanned=1");
+}
+
+export async function searchPriceAction(query: string) {
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!(await rateLimit(`jastip:search:${ip}`, 20, 3600))) {
+    return { ok: false as const, error: "Terlalu banyak pencarian. Coba lagi nanti." };
+  }
+  const q = query.trim();
+  if (q.length < 3) return { ok: false as const, error: "Ketik nama barang dulu." };
+  try {
+    const result = await searchProductPrice(q);
+    const rate = Number(process.env.JASTIP_RATE ?? 115);
+    const markup = Number(process.env.JASTIP_MARKUP ?? 10);
+    const price = result.recommended?.price ?? result.results[0]?.price ?? 0;
+    const modalIdr = lineCostIdr(price, 1, rate);
+    const totalIdr = Math.round(modalIdr * (1 + markup / 100));
+    const feeIdr = totalIdr - modalIdr;
+    return { ok: true as const, result, rate, markup, modalIdr, totalIdr, feeIdr };
+  } catch (error) {
+    return { ok: false as const, error: (error as Error).message };
+  }
+}
+
+export async function createClientOrderAction(fd: FormData) {
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!(await rateLimit(`jastip:order:${ip}`, 5, 3600))) {
+    redirect("/cari?error=2");
+  }
+  const name = str(fd, "name");
+  const phone = str(fd, "phone");
+  const itemName = str(fd, "itemName");
+  const price = decimal(str(fd, "price"));
+  const rate = decimal(str(fd, "rate"));
+  const totalIdr = intIdr(str(fd, "totalIdr"));
+  const currency = str(fd, "currency").toUpperCase() || "JPY";
+  if (!name || !itemName || !Number.isFinite(price) || price <= 0 || !Number.isFinite(rate) || rate <= 0) {
+    redirect("/cari?error=1");
+  }
+  const customerId = await q.findOrCreateCustomer(name, phone || null);
+  await q.createOrder({
+    tripId: null,
+    customerId,
+    itemName,
+    category: "Lainnya",
+    qty: 1,
+    foreignCurrency: currency,
+    unitCostForeign: price,
+    rateUsed: rate,
+    costIdr: lineCostIdr(price, 1, rate),
+    sellPriceIdr: totalIdr,
+    notes: str(fd, "notes") || null,
+    source: "client",
+  });
+  revalidatePath("/", "layout");
+  redirect("/cari?ok=1");
 }

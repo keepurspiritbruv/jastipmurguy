@@ -41,9 +41,7 @@ export const receipts = pgTable("receipts", {
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
-  tripId: integer("trip_id")
-    .notNull()
-    .references(() => trips.id, { onDelete: "cascade" }),
+  tripId: integer("trip_id").references(() => trips.id, { onDelete: "set null" }),
   customerId: integer("customer_id").references(() => customers.id, {
     onDelete: "set null",
   }),
@@ -61,6 +59,7 @@ export const orders = pgTable("orders", {
     onDelete: "set null",
   }),
   notes: text("notes"),
+  source: text("source").notNull().default("manual"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

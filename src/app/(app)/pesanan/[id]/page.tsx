@@ -17,8 +17,13 @@ export default async function PesananDetailPage({
   const order = await getOrder(Number(id));
   if (!order) notFound();
 
-  const trip = await getTrip(order.tripId);
-  if (!trip) notFound();
+  const trip = order.tripId ? await getTrip(order.tripId) : null;
+  if (order.tripId && !trip) notFound();
+  const formTrip = trip ?? {
+    id: 0,
+    baseCurrency: order.foreignCurrency,
+    rateUsed: String(order.rateUsed),
+  };
   const customers = await listCustomers();
   const customerName =
     customers.find((c) => c.id === order.customerId)?.name ?? null;
@@ -46,7 +51,7 @@ export default async function PesananDetailPage({
       </div>
 
       <OrderForm
-        trip={{ id: trip.id, baseCurrency: trip.baseCurrency, rateUsed: trip.rateUsed }}
+        trip={{ id: formTrip.id, baseCurrency: formTrip.baseCurrency, rateUsed: formTrip.rateUsed }}
         customers={customers.map((c) => ({ id: c.id, name: c.name }))}
         order={{
           id: order.id,

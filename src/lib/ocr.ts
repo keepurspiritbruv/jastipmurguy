@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIES } from "./categories";
+import { extractJson } from "./parse-json";
 
 export const ReceiptDraftSchema = z.object({
   merchant: z.string().nullish(),
@@ -19,37 +20,15 @@ export const ReceiptDraftSchema = z.object({
 export type ReceiptDraft = z.infer<typeof ReceiptDraftSchema>;
 
 const PROMPT = `Kamu membaca foto struk/nota dari toko di luar negeri.
-Ekstrak daftar barang yang dibeli. Balas HANYA JSON valid tanpa penjelasan, format:
-{"merchant":"nama toko atau null","currency":"kode mata uang 3 huruf mis. JPY","items":[{"name":"nama barang","qty":1,"unitPrice":120,"category":"satu dari daftar"}]}
+Ekstrak daftar barang yang dibeli. Balas dengan SATU objek JSON valid yang DIBUNGKUS penanda, persis seperti ini:
+[[JSON]]
+{"merchant":"nama toko atau kosong","currency":"kode mata uang 3 huruf mis. JPY","items":[{"name":"nama barang","qty":1,"unitPrice":120,"category":"satu dari daftar"}]}
+[[/JSON]]
 Aturan:
 - unitPrice adalah harga satuan dalam mata uang struk (angka, tanpa simbol).
 - Jika qty tidak jelas, gunakan 1.
 - category pilih dari: ${CATEGORIES.join(", ")}. Jika ragu, "Lainnya".
 - Jangan mengarang barang. Jika gambar bukan struk, items kosong.`;
-
-function parseJson(content: string): unknown {
-  const cleaned = content
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
-  const start = cleaned.lastIndexOf("{");
-  if (start === -1) throw new Error("Jawaban AI tidak berisi JSON");
-  let depth = 0;
-  let end = -1;
-  for (let i = start; i < cleaned.length; i++) {
-    const c = cleaned[i];
-    if (c === "{") depth++;
-    else if (c === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
-      }
-    }
-  }
-  if (end === -1) throw new Error("Jawaban AI tidak berisi JSON");
-  return JSON.parse(cleaned.slice(start, end + 1));
-}
 
 export async function extractReceipt(imageDataUrl: string, fallbackCurrency: string): Promise<ReceiptDraft> {
   const key = process.env.AI_API_KEY;
@@ -89,7 +68,7 @@ export async function extractReceipt(imageDataUrl: string, fallbackCurrency: str
   const content = json.choices?.[0]?.message?.content;
   if (!content) throw new Error("AI tidak mengembalikan hasil");
 
-  const draft = ReceiptDraftSchema.parse(parseJson(content));
+  const draft = ReceiptDraftSchema.parse(extractJson(content, "items"));
   if (draft.items.length === 0) throw new Error("Tidak ada barang yang terbaca dari struk");
   return {
     ...draft,
