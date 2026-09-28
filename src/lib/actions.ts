@@ -303,8 +303,23 @@ export async function createClientOrderAction(fd: FormData) {
     status: "pending",
     pushSubscription: str(fd, "pushSub") || null,
   });
+  const admins = await q.listAdminSubscriptions();
+  for (const a of admins) {
+    await sendPush(a.subscription, {
+      title: "JastipMurGuy",
+      body: `Pesanan baru masuk dari ${name}`,
+      url: "/pesanan-masuk",
+    });
+  }
   revalidatePath("/", "layout");
   redirect("/cari?ok=1");
+}
+
+export async function saveAdminSubscriptionAction(subscription: string) {
+  await requireAuth();
+  if (!subscription) return { ok: false as const };
+  await q.addAdminSubscription(subscription);
+  return { ok: true as const };
 }
 
 export async function acceptOrderAction(fd: FormData) {

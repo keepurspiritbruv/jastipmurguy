@@ -59,6 +59,11 @@ const DDL = [
   `ALTER TABLE orders ADD COLUMN IF NOT EXISTS push_subscription text`,
   `CREATE INDEX IF NOT EXISTS orders_trip_idx ON orders(trip_id)`,
   `CREATE INDEX IF NOT EXISTS orders_customer_idx ON orders(customer_id)`,
+  `CREATE TABLE IF NOT EXISTS admin_subscriptions (
+    id serial PRIMARY KEY,
+    subscription text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
 ];
 
 export async function migrate() {

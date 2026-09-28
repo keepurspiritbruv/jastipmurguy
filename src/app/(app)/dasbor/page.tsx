@@ -1,5 +1,6 @@
 import Link from "next/link";
 import TripSwitcher from "@/components/trip-switcher";
+import AdminSubscribe from "@/components/admin-subscribe";
 import { formatIdr, formatPct } from "@/lib/format";
 import { groupRevenue, tripStats } from "@/lib/money";
 import { listOrders } from "@/lib/queries";
@@ -32,6 +33,7 @@ export default async function DasborPage() {
   return (
     <div className="animate-in space-y-4">
       <TripSwitcher currentId={trip.id} />
+      <AdminSubscribe />
 
       <div className="grid grid-cols-2 gap-3">
         <Stat label="Pesanan" value={String(stats.orders)} />

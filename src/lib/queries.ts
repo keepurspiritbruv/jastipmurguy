@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { db } from "./db";
-import { customers, orders, receipts, trips } from "./db/schema";
+import { customers, orders, receipts, trips, adminSubscriptions } from "./db/schema";
 import type * as schema from "./db/schema";
 import type { ReceiptDraft } from "./ocr";
 
@@ -313,4 +313,12 @@ export async function createReceipt(tripId: number | null, extracted: ReceiptDra
     .values({ tripId, extracted })
     .returning();
   return rows[0];
+}
+
+export async function addAdminSubscription(subscription: string) {
+  await d.insert(adminSubscriptions).values({ subscription });
+}
+
+export async function listAdminSubscriptions() {
+  return d.select().from(adminSubscriptions);
 }
