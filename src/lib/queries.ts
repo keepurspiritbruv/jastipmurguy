@@ -316,6 +316,12 @@ export async function createReceipt(tripId: number | null, extracted: ReceiptDra
 }
 
 export async function addAdminSubscription(subscription: string) {
+  const existing = await d
+    .select()
+    .from(adminSubscriptions)
+    .where(eq(adminSubscriptions.subscription, subscription))
+    .limit(1);
+  if (existing[0]) return;
   await d.insert(adminSubscriptions).values({ subscription });
 }
 

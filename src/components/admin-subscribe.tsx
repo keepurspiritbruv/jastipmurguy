@@ -1,11 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { saveAdminSubscriptionAction } from "@/lib/actions";
 import { enableNotifications } from "@/lib/push-client";
 
 export default function AdminSubscribe() {
   const [state, setState] = useState<"idle" | "busy" | "done" | "err">("idle");
+
+  useEffect(() => {
+    (async () => {
+      if (!("serviceWorker" in navigator)) return;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = await reg?.pushManager.getSubscription();
+        if (sub) {
+          setState("done");
+          await saveAdminSubscriptionAction(JSON.stringify(sub));
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   async function enable() {
     setState("busy");
